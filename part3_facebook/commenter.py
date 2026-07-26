@@ -13,7 +13,7 @@ DEFAULT_COMMENTS: list[str] = [
     "Great post! Thanks for sharing this.",
     "This is really interesting, appreciate the insight!",
     "Love this! Very helpful information.",
-    "Thanks for putting this out there",
+    "Thanks for putting this out",
     "Really valuable content, bookmarking this.",
     "Well said! I appreciate the transparency.",
     "This is exactly what I was looking for, thank you!",
