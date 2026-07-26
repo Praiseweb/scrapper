@@ -1,0 +1,39 @@
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs and outputs
+logs/
+*.log
+output/
+browser_state/
+*.csv
+*.json
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Mypy
+.mypy_cache/
+
+# OS specific
+.DS_Store
+Thumbs.db
