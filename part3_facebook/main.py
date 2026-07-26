@@ -1,30 +1,3 @@
-"""
-Facebook Automation — Main Entry Point
-========================================
-
-Orchestrates the complete Facebook automation workflow:
-1. Launch stealth browser
-2. Login to Facebook
-3. Scrape posts from feed
-4. Comment on posts
-5. Export results
-
-Usage:
-    # Using CLI arguments:
-    python -m part3_facebook.main --email your@email.com --password yourpass
-
-    # Using .env file (recommended):
-    # Set FACEBOOK_EMAIL and FACEBOOK_PASSWORD in .env
-    python -m part3_facebook.main
-
-    # With options:
-    python -m part3_facebook.main --max-posts 15 --comment-limit 5 --headless
-
-Note:
-    This tool is designed for use with your OWN Facebook account only.
-    Built as part of a job assessment for Amazing Properties Wisconsin LLC.
-"""
-
 import argparse
 import asyncio
 import json
@@ -32,7 +5,6 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-# Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 try:
@@ -50,9 +22,7 @@ from part3_facebook.utils import setup_logger
 
 logger = setup_logger("facebook.main")
 
-
 def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description="Facebook Automation — Scrape posts and post comments",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -143,21 +113,7 @@ Examples:
 
     return parser.parse_args()
 
-
 async def main() -> None:
-    """
-    Main execution function — orchestrates the full workflow.
-
-    Flow:
-        1. Validate credentials
-        2. Launch browser with stealth patches
-        3. Login to Facebook
-        4. Scrape posts from feed/page
-        5. Export scraped posts to JSON
-        6. Comment on posts (unless --scrape-only)
-        7. Export action log
-        8. Print summary
-    """
     args = parse_args()
 
     # -----------------------------------------------------------------------
@@ -292,7 +248,6 @@ async def main() -> None:
 
     print("=" * 60)
     logger.info("Session complete. Goodbye!")
-
 
 if __name__ == "__main__":
     asyncio.run(main())

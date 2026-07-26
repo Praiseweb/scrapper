@@ -5,31 +5,31 @@ from .utils import logger
 try:
     from rapidfuzz import fuzz
 except ImportError:
-    # Basic fallback if rapidfuzz is not installed
     class FuzzFallback:
         @staticmethod
         def ratio(s1, s2):
             return 100.0 if s1 == s2 else 0.0
     fuzz = FuzzFallback()
 
-def clean_price(raw: Optional[str]) -> Optional[float]:
-    if not raw:
+def clean_price(raw) -> Optional[float]:
+    if raw is None:
         return None
-    cleaned = re.sub(r'[^\d.]', '', raw)
+    cleaned = re.sub(r'[^\d.]', '', str(raw))
     try:
         return float(cleaned) if cleaned else None
     except ValueError:
         return None
 
-def clean_address(raw: Optional[str]) -> Optional[str]:
-    if not raw:
+def clean_address(raw) -> Optional[str]:
+    if raw is None:
         return None
-    return ' '.join(raw.split())
+    return ' '.join(str(raw).split())
 
-def extract_housing_info(text: Optional[str]) -> dict:
+def extract_housing_info(text) -> dict:
     info = {"bedrooms": None, "bathrooms": None, "sqft": None, "property_type": None}
     if not text:
         return info
+    text = str(text)
     
     bed_match = re.search(r'(\d+)\s*[bB][rR]', text)
     if bed_match:
@@ -57,17 +57,18 @@ def detect_duplicates(listings: List[Dict]) -> List[Dict]:
     unique = []
     for l in listings:
         url = l.get("url")
-        if url in seen_urls:
+        if not url or url in seen_urls:
             continue
         seen_urls.add(url)
         unique.append(l)
-        
-    # Optional fuzzy deduplication based on title+price
+
     final_unique = []
     for l in unique:
         is_dup = False
         for f in final_unique:
-            title_score = fuzz.ratio(l.get("title", ""), f.get("title", ""))
+            title_a = l.get("title") or ""
+            title_b = f.get("title") or ""
+            title_score = fuzz.ratio(title_a, title_b)
             if title_score > 90 and l.get("raw_price") == f.get("raw_price"):
                 is_dup = True
                 break
@@ -81,7 +82,10 @@ def validate_listing(listing: Dict) -> bool:
     if price is not None and (price <= 0 or price > 100000000):
         return False
     beds = listing.get("bedrooms")
-    if beds is not None and beds > 30:
+    if beds is not None and (beds < 0 or beds > 30):
+        return False
+    sqft = listing.get("sqft")
+    if sqft is not None and sqft < 0:
         return False
     return True
 
@@ -96,7 +100,7 @@ def clean_all(raw_listings: List[Dict]) -> List[PropertyListing]:
             housing = extract_housing_info(raw.get("raw_housing_info", ""))
             
             listing = {
-                "title": raw.get("title", "No Title"),
+                "title": raw.get("title") or "No Title",
                 "price": price,
                 "address": address,
                 "bedrooms": housing["bedrooms"],

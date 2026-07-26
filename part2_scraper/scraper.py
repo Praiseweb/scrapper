@@ -1,24 +1,3 @@
-"""
-Real Estate Scraper — Dual-Mode Engine
-=======================================
-
-Supports two modes:
-1. LIVE MODE: Scrapes Craigslist using curl_cffi TLS impersonation
-2. DEMO MODE: Generates realistic sample data when live scraping is
-   blocked (e.g., by Cloudflare, ISP restrictions, or IP bans)
-
-The architecture, pipeline, and data cleaning are identical in both
-modes — demo mode simply replaces the network fetch with realistic
-synthetic data generation, proving the full pipeline works end-to-end.
-
-Anti-Bot Strategy (Live Mode):
-- curl_cffi: Impersonates Chrome's TLS fingerprint at the C library level
-- Rotating User-Agents with realistic browser headers
-- Rate limiting with randomized delays
-- Retry logic with exponential backoff
-- Proxy support with health checking
-"""
-
 import asyncio
 import random
 import hashlib
@@ -36,16 +15,8 @@ import httpx
 
 from .utils import logger, get_random_user_agent, RateLimiter
 from .parser import parse_search_results, parse_listing_detail
-from .models import PropertyListing
-
 
 class CraigslistScraper:
-    """
-    Production real estate scraper with live and demo capabilities.
-
-    Live Mode attempts curl_cffi → httpx fallback chain.
-    Demo Mode generates realistic data when sources are unreachable.
-    """
 
     LOCATIONS = {
         "milwaukee": {
@@ -129,7 +100,6 @@ class CraigslistScraper:
         self._impersonate = random.choice(self.IMPERSONATE_OPTIONS)
 
     def _get_headers(self) -> dict:
-        """Generate realistic Chrome browser headers."""
         ua = get_random_user_agent()
         return {
             "User-Agent": ua,
@@ -148,21 +118,7 @@ class CraigslistScraper:
             "Cache-Control": "max-age=0",
         }
 
-    # ─────────────────────────────────────────────
-    # Live Scraping (curl_cffi → httpx fallback)
-    # ─────────────────────────────────────────────
-
     async def _try_live_fetch(self, url: str) -> Optional[str]:
-        """
-        Attempt to fetch a URL using the live scraping chain.
-
-        Strategy:
-        1. Try curl_cffi with Chrome TLS impersonation (best for Cloudflare)
-        2. Fall back to httpx if curl_cffi unavailable or fails
-
-        Returns HTML string on success, None if blocked.
-        """
-        # Attempt 1: curl_cffi (TLS fingerprint impersonation)
         if HAS_CURL_CFFI:
             try:
                 async with AsyncSession(impersonate=self._impersonate) as session:
@@ -178,7 +134,6 @@ class CraigslistScraper:
             except Exception as e:
                 logger.warning("curl_cffi failed: %s", e)
 
-        # Attempt 2: httpx fallback
         try:
             async with httpx.AsyncClient(
                 headers=self._get_headers(),
@@ -195,30 +150,17 @@ class CraigslistScraper:
 
         return None
 
-    # ─────────────────────────────────────────────
-    # Demo Data Generation
-    # ─────────────────────────────────────────────
-
     def _generate_listing(self, location_key: str, index: int) -> Dict:
-        """
-        Generate a single realistic listing.
-
-        Uses seeded randomness based on location + index for reproducibility.
-        All data is modeled on real Craigslist listing patterns for the
-        Milwaukee and Columbus markets.
-        """
         loc_data = self.LOCATIONS[location_key]
         seed = hashlib.md5(f"{location_key}-{index}".encode()).hexdigest()
         rng = random.Random(seed)
 
-        # Property type distribution (weighted toward houses)
         prop_type = rng.choices(
             self.PROPERTY_TYPES,
             weights=[50, 15, 15, 10, 10],
             k=1,
         )[0]
 
-        # Price ranges by property type
         price_ranges = {
             "house": (65000, 245000),
             "duplex": (85000, 230000),
@@ -227,12 +169,10 @@ class CraigslistScraper:
             "apartment": (50000, 150000),
         }
         pmin, pmax = price_ranges[prop_type]
-        # Clamp to user's configured range
         pmin = max(pmin, self.min_price)
         pmax = min(pmax, self.max_price)
         price = round(rng.randint(pmin, pmax) / 1000) * 1000
 
-        # Beds/baths by property type
         bed_ranges = {
             "house": (2, 5), "duplex": (3, 6), "condo": (1, 3),
             "townhouse": (2, 4), "apartment": (1, 3),
@@ -240,18 +180,15 @@ class CraigslistScraper:
         bedrooms = rng.randint(*bed_ranges[prop_type])
         bathrooms = rng.choice([1, 1, 1.5, 2, 2, 2.5, 3])
 
-        # Square footage correlated with beds
         base_sqft = {1: 600, 2: 900, 3: 1200, 4: 1600, 5: 2000, 6: 2400}
         sqft = base_sqft.get(bedrooms, 1200) + rng.randint(-200, 400)
 
-        # Address
         street_num = rng.randint(100, 9999)
         street = rng.choice(loc_data["streets"])
         neighborhood = rng.choice(loc_data["neighborhoods"])
         zipcode = rng.choice(loc_data["zip_codes"])
         address = f"{street_num} {street}, {neighborhood}, {loc_data['city']}, {loc_data['state'].upper()} {zipcode}"
 
-        # Title patterns matching real Craigslist listings
         title_templates = [
             f"{bedrooms}BR/{int(bathrooms)}BA {prop_type.title()} in {neighborhood}",
             f"Charming {bedrooms} Bed {prop_type.title()} — {neighborhood}",
@@ -264,7 +201,6 @@ class CraigslistScraper:
         ]
         title = rng.choice(title_templates)
 
-        # Description
         features = rng.sample([
             "hardwood floors throughout", "updated kitchen with granite countertops",
             "new roof (2023)", "central air conditioning", "attached garage",
@@ -283,11 +219,9 @@ class CraigslistScraper:
             f"Priced to sell at ${price:,}. Don't miss this opportunity!"
         )
 
-        # Posted date (within last 30 days)
         days_ago = rng.randint(0, 30)
         posted_date = (datetime.now() - timedelta(days=days_ago)).strftime("%Y-%m-%dT%H:%M:%S")
 
-        # Unique Craigslist-style URL
         post_id = rng.randint(7700000000, 7799999999)
         base_url = loc_data["base_url"]
         url = f"{base_url}/rea/d/{title.lower().replace(' ', '-')[:30]}/{post_id}.html"
@@ -307,23 +241,12 @@ class CraigslistScraper:
         }
 
     def _generate_demo_listings(self, location_key: str, count: int) -> List[Dict]:
-        """Generate a batch of realistic demo listings for a location."""
         listings = []
         for i in range(count):
             listings.append(self._generate_listing(location_key, i))
         return listings
 
-    # ─────────────────────────────────────────────
-    # Main Orchestration
-    # ─────────────────────────────────────────────
-
     async def scrape_location(self, location_key: str, max_listings: int = 100) -> List[Dict]:
-        """
-        Scrape listings for a location.
-
-        Attempts live scraping first. If blocked (403/DNS/timeout),
-        automatically falls back to demo mode with realistic data.
-        """
         loc_data = self.LOCATIONS.get(location_key)
         if not loc_data:
             logger.error("Unknown location: %s", location_key)
@@ -332,7 +255,6 @@ class CraigslistScraper:
         base_url = loc_data["base_url"]
         search_url = f"{base_url}/search/rea"
 
-        # Skip live attempt if demo mode forced
         if self.demo_mode:
             logger.info(
                 "Demo mode enabled — generating %d realistic listings for %s",
@@ -340,18 +262,15 @@ class CraigslistScraper:
             )
             return self._generate_demo_listings(location_key, max_listings)
 
-        # Try live scraping first
         logger.info("Attempting live scrape of %s...", location_key)
         test_url = f"{search_url}?min_price={self.min_price}&max_price={self.max_price}&query=house&s=0"
         await self.rate_limiter.wait()
         html = await self._try_live_fetch(test_url)
 
         if html:
-            # Live mode works — proceed with full scrape
             logger.info("[OK] Live scraping available for %s!", location_key)
             return await self._live_scrape_location(location_key, html, max_listings)
         else:
-            # Blocked — fall back to demo mode
             logger.warning(
                 "[BLOCKED] Live scraping blocked for %s (Cloudflare/IP restriction). "
                 "Falling back to demo mode with realistic data.",
@@ -362,14 +281,12 @@ class CraigslistScraper:
     async def _live_scrape_location(
         self, location_key: str, first_page_html: str, max_listings: int
     ) -> List[Dict]:
-        """Full live scraping when the source is accessible."""
         loc_data = self.LOCATIONS[location_key]
         base_url = loc_data["base_url"]
         search_url = f"{base_url}/search/rea"
         all_listings: List[Dict] = []
         seen_urls: set = set()
 
-        # Process first page we already fetched
         results = parse_search_results(first_page_html)
         for r in results:
             url = r.get("url", "")
@@ -383,8 +300,7 @@ class CraigslistScraper:
 
         logger.info("First page: %d listings found", len(results))
 
-        # Continue with remaining keywords and pagination
-        for kw in self.KEYWORDS[1:]:  # Skip first keyword (already done)
+        for kw in self.KEYWORDS:
             if len(all_listings) >= max_listings:
                 break
 
@@ -430,7 +346,6 @@ class CraigslistScraper:
                     break
                 offset += 120
 
-        # Fetch detail pages
         logger.info("Fetching %d detail pages...", min(len(all_listings), max_listings))
         detailed = []
         for i, listing in enumerate(all_listings[:max_listings]):
@@ -454,7 +369,6 @@ class CraigslistScraper:
         return detailed
 
     async def run(self, locations: List[str], max_listings: int = 100) -> List[Dict]:
-        """Run the scraper across all specified locations."""
         all_results: List[Dict] = []
 
         for loc in locations:

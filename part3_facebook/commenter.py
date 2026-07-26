@@ -1,11 +1,3 @@
-"""
-Facebook Automation — Comment Engine
-=====================================
-
-Automates posting comments on Facebook posts with human-like
-interaction patterns and built-in safety limits.
-"""
-
 import logging
 import random
 from datetime import datetime
@@ -17,11 +9,6 @@ from .utils import human_delay, human_typing_speed, random_mouse_movement, setup
 
 logger = setup_logger("facebook.commenter")
 
-
-# ---------------------------------------------------------------------------
-# Default comment templates — generic, positive, conversational
-# The employer can customize these for their specific use case
-# ---------------------------------------------------------------------------
 DEFAULT_COMMENTS: list[str] = [
     "Great post! Thanks for sharing this.",
     "This is really interesting, appreciate the insight!",
@@ -37,24 +24,7 @@ DEFAULT_COMMENTS: list[str] = [
     "Really helpful post — keep them coming!",
 ]
 
-
 class FacebookCommenter:
-    """
-    Automates commenting on Facebook posts with human-like behavior.
-
-    Safety features:
-        - Daily action limit (default: 10 comments/day)
-        - Minimum delay between comments (default: 30 seconds)
-        - Random delays follow natural patterns
-        - Session breaks after every N actions
-        - Comprehensive logging of all actions
-
-    Attributes:
-        page: Authenticated Playwright Page object.
-        min_delay: Minimum seconds between comments.
-        max_delay: Maximum seconds between comments.
-        daily_limit: Maximum comments per session.
-    """
 
     def __init__(
         self,
@@ -64,16 +34,6 @@ class FacebookCommenter:
         daily_limit: int = 10,
         comments: Optional[list[str]] = None,
     ) -> None:
-        """
-        Initialize the commenter.
-
-        Args:
-            page: Authenticated Playwright Page object.
-            min_delay: Minimum seconds between comment actions.
-            max_delay: Maximum seconds between comment actions.
-            daily_limit: Maximum comments allowed per session.
-            comments: Custom comment templates. Uses defaults if None.
-        """
         self.page = page
         self.min_delay = min_delay
         self.max_delay = max_delay
@@ -97,25 +57,6 @@ class FacebookCommenter:
         post_element,
         comment_text: Optional[str] = None,
     ) -> bool:
-        """
-        Post a comment on a specific Facebook post.
-
-        Mimics natural human behavior:
-        1. Scrolls the post into view
-        2. Pauses (reading the post)
-        3. Clicks the comment box
-        4. Types with realistic speed and occasional corrections
-        5. Submits the comment
-        6. Waits for confirmation
-
-        Args:
-            post_element: Playwright Locator for the post container.
-            comment_text: Comment to post. Random template if None.
-
-        Returns:
-            True if comment was posted successfully, False otherwise.
-        """
-        # Check daily limit
         if self._action_count >= self.daily_limit:
             logger.warning(
                 "Daily limit reached (%d/%d) — skipping comment.",
@@ -124,7 +65,6 @@ class FacebookCommenter:
             )
             return False
 
-        # Select comment text
         if comment_text is None:
             comment_text = random.choice(self.comments)
 
@@ -136,14 +76,11 @@ class FacebookCommenter:
         )
 
         try:
-            # Step 1: Scroll post into view (natural browsing)
             await post_element.scroll_into_view_if_needed()
             await human_delay(1.0, 2.5)
 
-            # Step 2: Random mouse movement (human behavior)
             await random_mouse_movement(self.page)
 
-            # Step 3: Find and click the comment button/input
             comment_btn = post_element.locator(
                 'div[aria-label="Write a comment"], '
                 'div[aria-label="Write a comment…"], '
@@ -151,7 +88,6 @@ class FacebookCommenter:
                 'div[contenteditable="true"][role="textbox"]'
             )
 
-            # Some posts have a "Comment" button to expand the input
             expand_btn = post_element.locator(
                 'div[aria-label="Leave a comment"], '
                 'span:has-text("Comment"):not(:has-text("comments"))'
@@ -161,21 +97,17 @@ class FacebookCommenter:
                 await expand_btn.first.click()
                 await human_delay(1.0, 2.0)
 
-            # Wait for comment box to be ready
             await comment_btn.first.wait_for(state="visible", timeout=10000)
             await comment_btn.first.click()
             await human_delay(0.5, 1.5)
 
-            # Step 4: Type comment with human-like timing
             await self._type_comment(comment_btn.first, comment_text)
             await human_delay(0.5, 2.0)
 
-            # Step 5: Submit the comment (Enter key)
             logger.info("Submitting comment...")
             await comment_btn.first.press("Enter")
             await human_delay(2.0, 4.0)
 
-            # Step 6: Log the action
             self._action_count += 1
             action_record = {
                 "action": "comment",
@@ -206,35 +138,18 @@ class FacebookCommenter:
             return False
 
     async def _type_comment(self, element, text: str) -> None:
-        """
-        Type a comment with human-like keystroke patterns.
-
-        Includes:
-        - Variable speed between characters
-        - Occasional brief pauses at word boundaries
-        - Rare simulated typo + correction (backspace + retype)
-
-        Args:
-            element: The comment input Locator.
-            text: Text to type.
-        """
         for i, char in enumerate(text):
-            # 3% chance of making a "typo" and correcting it
-            # This makes the typing pattern look more human
             if random.random() < 0.03 and char.isalpha():
-                # Type a wrong character
                 wrong_char = chr(ord(char) + random.choice([-1, 1]))
                 if wrong_char.isalpha():
                     await element.press_sequentially(wrong_char, delay=0)
-                    await human_delay(0.1, 0.3)  # Notice the mistake
+                    await human_delay(0.1, 0.3)
                     await element.press("Backspace")
                     await human_delay(0.05, 0.15)
 
-            # Type the correct character
             delay_ms = human_typing_speed() * 1000
             await element.press_sequentially(char, delay=delay_ms)
 
-            # Longer pause at word boundaries
             if char == " " and random.random() < 0.3:
                 await human_delay(0.2, 0.6)
 
@@ -243,20 +158,6 @@ class FacebookCommenter:
         posts: list[dict[str, Any]],
         max_comments: Optional[int] = None,
     ) -> list[dict[str, Any]]:
-        """
-        Run the full commenting workflow across multiple posts.
-
-        Iterates through posts, selects a random comment for each,
-        and posts with realistic delays between actions. Includes
-        session breaks for extended runs.
-
-        Args:
-            posts: List of post data dicts (must have scraping context).
-            max_comments: Override for maximum comments this run.
-
-        Returns:
-            List of action log entries documenting each action.
-        """
         effective_limit = min(
             max_comments or self.daily_limit,
             self.daily_limit,
@@ -269,7 +170,6 @@ class FacebookCommenter:
             effective_limit,
         )
 
-        # Shuffle posts to avoid sequential patterns
         post_indices = list(range(len(posts)))
         random.shuffle(post_indices)
 
@@ -281,8 +181,6 @@ class FacebookCommenter:
                 break
 
             try:
-                # Re-locate the post elements on the page
-                # (we need fresh locators since the DOM may have changed)
                 post_elements = self.page.locator('div[role="article"]')
                 element_count = await post_elements.count()
 
@@ -292,22 +190,19 @@ class FacebookCommenter:
 
                 post_element = post_elements.nth(idx)
 
-                # Post the comment
                 success = await self.comment_on_post(post_element)
 
                 if success:
                     comments_posted += 1
 
-                    # Session break every 3-4 comments
                     if comments_posted > 0 and comments_posted % random.randint(3, 4) == 0:
-                        break_time = random.uniform(60, 180)  # 1-3 minute break
+                        break_time = random.uniform(60, 180)
                         logger.info(
                             "Taking a session break (%.0f seconds)...",
                             break_time,
                         )
                         await human_delay(break_time, break_time + 10)
 
-                # Wait between comments (the main anti-detection measure)
                 wait_time = random.uniform(self.min_delay, self.max_delay)
                 logger.info("Waiting %.0f seconds before next action...", wait_time)
                 await human_delay(wait_time, wait_time + 5)
@@ -326,15 +221,12 @@ class FacebookCommenter:
 
     @property
     def action_count(self) -> int:
-        """Get the number of actions performed this session."""
         return self._action_count
 
     @property
     def action_log(self) -> list[dict[str, Any]]:
-        """Get the full action log."""
         return self._action_log
 
     @property
     def remaining_actions(self) -> int:
-        """Get the number of remaining actions before hitting the daily limit."""
         return max(0, self.daily_limit - self._action_count)

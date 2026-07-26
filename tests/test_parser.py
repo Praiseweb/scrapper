@@ -1,7 +1,6 @@
 import pytest
 from bs4 import BeautifulSoup
 
-# Mock parser
 class HTMLParser:
     @staticmethod
     def parse_search_results(html: str) -> list:
@@ -35,7 +34,6 @@ class HTMLParser:
             "attributes": attrs
         }
 
-
 @pytest.fixture
 def sample_search_html():
     return """
@@ -56,7 +54,6 @@ def sample_search_html():
         </body>
     </html>
     """
-
 
 @pytest.fixture
 def sample_detail_html():
@@ -80,7 +77,6 @@ def sample_detail_html():
     </html>
     """
 
-
 def test_parse_search_results(sample_search_html):
     parser = HTMLParser()
     results = parser.parse_search_results(sample_search_html)
@@ -93,7 +89,6 @@ def test_parse_search_results(sample_search_html):
     assert results[1]["title"] == "Studio in Downtown"
     assert results[1]["price"] is None
 
-
 def test_parse_detail_page(sample_detail_html):
     parser = HTMLParser()
     result = parser.parse_detail_page(sample_detail_html)
@@ -101,7 +96,6 @@ def test_parse_detail_page(sample_detail_html):
     assert "This is a wonderful apartment" in result["description"]
     assert "QR Code Link" not in result["description"]
     assert result["attributes"].get("application fee details") == "$50"
-
 
 def test_parse_missing_fields():
     parser = HTMLParser()

@@ -45,14 +45,15 @@ def get_random_user_agent() -> str:
     return random.choice(USER_AGENTS)
 
 async def random_delay(min_sec: float = 2.0, max_sec: float = 5.0) -> None:
-    delay = random.uniform(min_sec, max_sec)
-    logger.debug(f"Throttling for {delay:.2f} seconds")
+    delay = random.uniform(max(0, min_sec), max(0, max_sec))
     await asyncio.sleep(delay)
 
 def retry_async(retries: int = 3, base_delay: float = 2.0):
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
+            if retries <= 0:
+                return await func(*args, **kwargs)
             last_exc = None
             for attempt in range(1, retries + 1):
                 try:
@@ -69,8 +70,8 @@ def retry_async(retries: int = 3, base_delay: float = 2.0):
 
 class RateLimiter:
     def __init__(self, min_delay: float = 2.0, max_delay: float = 5.0):
-        self.min_delay = min_delay
-        self.max_delay = max_delay
+        self.min_delay = max(0, min_delay)
+        self.max_delay = max(0, max_delay)
 
-    async def wait(self):
+    async def wait(self) -> None:
         await random_delay(self.min_delay, self.max_delay)

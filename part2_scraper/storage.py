@@ -11,7 +11,9 @@ def export_csv(listings: List[PropertyListing], path: str) -> None:
         return
         
     try:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        dirpath = os.path.dirname(path)
+        if dirpath:
+            os.makedirs(dirpath, exist_ok=True)
         headers = list(listings[0].model_dump().keys())
         
         with open(path, 'w', newline='', encoding='utf-8') as f:
@@ -29,7 +31,9 @@ def export_json(listings: List[PropertyListing], path: str) -> None:
         return
         
     try:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        dirpath = os.path.dirname(path)
+        if dirpath:
+            os.makedirs(dirpath, exist_ok=True)
         data = [listing.model_dump() for listing in listings]
         
         with open(path, 'w', encoding='utf-8') as f:

@@ -1,5 +1,5 @@
 import random
-from typing import Optional, List
+from typing import Optional, List, Dict
 from .utils import logger
 
 class ProxyManager:
@@ -9,9 +9,9 @@ class ProxyManager:
             self.proxies.extend(proxies)
         if proxy_file:
             self._load_from_file(proxy_file)
-        self.dead_proxies: List[str] = []
+        self.dead_proxies: set = set()
         self.max_failures = 3
-        self.proxy_failures: dict = {}
+        self.proxy_failures: Dict[str, int] = {}
 
     def _load_from_file(self, filepath: str) -> None:
         try:
@@ -31,8 +31,8 @@ class ProxyManager:
     def mark_failure(self, proxy: str) -> None:
         if proxy not in self.proxies:
             return
-        
         self.proxy_failures[proxy] = self.proxy_failures.get(proxy, 0) + 1
         if self.proxy_failures[proxy] >= self.max_failures:
             logger.warning(f"Marking proxy {proxy} as dead after {self.max_failures} failures")
-            self.dead_proxies.append(proxy)
+            self.dead_proxies.add(proxy)
+

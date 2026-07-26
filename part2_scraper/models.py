@@ -12,5 +12,5 @@ class PropertyListing(BaseModel):
     description: Optional[str] = None
     posted_date: Optional[str] = None
     source: str = "craigslist"
-    location: str  # "milwaukee_wi" or "columbus_oh"
+    location: str
     property_type: Optional[str] = None

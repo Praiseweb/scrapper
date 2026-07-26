@@ -1,22 +1,6 @@
-"""
-Facebook Automation — Stealth & Anti-Detection Module
-=====================================================
-
-Applies browser patches to minimize automation detection signals.
-Used for legitimate testing with the operator's own Facebook account
-as part of a job assessment for Amazing Properties Wisconsin LLC.
-
-These techniques demonstrate knowledge of browser fingerprinting
-and detection evasion — core skills for web automation roles.
-"""
-
 import random
 from typing import Any
 
-
-# ---------------------------------------------------------------------------
-# Realistic User-Agent Pool (Chrome on Windows/Mac, 2025-2026 builds)
-# ---------------------------------------------------------------------------
 USER_AGENTS: list[str] = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
@@ -28,9 +12,6 @@ USER_AGENTS: list[str] = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
 ]
 
-# ---------------------------------------------------------------------------
-# Realistic viewport dimensions (common screen resolutions)
-# ---------------------------------------------------------------------------
 VIEWPORTS: list[dict[str, int]] = [
     {"width": 1920, "height": 1080},
     {"width": 1366, "height": 768},
@@ -42,33 +23,14 @@ VIEWPORTS: list[dict[str, int]] = [
     {"width": 1600, "height": 900},
 ]
 
-
 def get_random_user_agent() -> str:
-    """Return a random realistic Chrome User-Agent string."""
     return random.choice(USER_AGENTS)
 
-
 def get_random_viewport() -> dict[str, int]:
-    """Return a random realistic viewport dimension."""
     return random.choice(VIEWPORTS)
 
-
 async def apply_stealth(page: Any) -> None:
-    """
-    Apply stealth patches to a Playwright page to reduce automation signals.
 
-    Each patch addresses a specific detection vector that platforms use to
-    identify headless/automated browsers. Comments explain the rationale.
-
-    Args:
-        page: A Playwright Page object.
-    """
-
-    # -----------------------------------------------------------------------
-    # 1. Remove navigator.webdriver flag
-    #    Automation frameworks set navigator.webdriver = true by default.
-    #    Real browsers never have this flag set to true.
-    # -----------------------------------------------------------------------
     await page.add_init_script("""
         Object.defineProperty(navigator, 'webdriver', {
             get: () => undefined,

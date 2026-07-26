@@ -1,16 +1,14 @@
 from bs4 import BeautifulSoup
 from typing import List, Dict
-import re
 from .utils import logger
 
 def parse_search_results(html: str) -> List[Dict]:
+    if not html:
+        return []
     soup = BeautifulSoup(html, 'lxml')
-    listings = []
     
-    # Modern Craigslist uses ol.cl-search-results and li.cl-search-result
     results = soup.find_all('li', class_='cl-search-result')
     if not results:
-        # Fallback to old structure if needed
         results = soup.find_all('li', class_='result-row')
         
     for result in results:
@@ -19,6 +17,8 @@ def parse_search_results(html: str) -> List[Dict]:
             if not link:
                 continue
             url = link.get('href')
+            if not url:
+                continue
             title = link.text.strip()
             
             price_el = result.find('span', class_='priceinfo') or result.find('span', class_='result-price')
@@ -35,8 +35,9 @@ def parse_search_results(html: str) -> List[Dict]:
     return listings
 
 def parse_listing_detail(html: str) -> Dict:
+    if not html:
+        return {}
     soup = BeautifulSoup(html, 'lxml')
-    details = {}
     
     try:
         title_el = soup.find('span', id='titletextonly')
@@ -60,7 +61,6 @@ def parse_listing_detail(html: str) -> Dict:
         
         body = soup.find('section', id='postingbody')
         if body:
-            # Remove the "QR Code Link to This Post" text
             qr_text = body.find('div', class_='print-information')
             if qr_text:
                 qr_text.decompose()

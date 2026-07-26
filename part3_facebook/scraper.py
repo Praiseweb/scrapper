@@ -1,11 +1,3 @@
-"""
-Facebook Automation — Post Scraper
-===================================
-
-Scrapes posts from Facebook feed or specific pages with
-human-like scrolling and interaction patterns.
-"""
-
 import json
 import logging
 import re
@@ -19,20 +11,7 @@ from .utils import human_delay, random_scroll_amount, random_mouse_movement, set
 
 logger = setup_logger("facebook.scraper")
 
-
 class FacebookScraper:
-    """
-    Scrapes posts from Facebook with human-like browsing behavior.
-
-    Handles infinite scroll, extracts structured post data, and
-    exports results to JSON. Designed to look like normal browsing
-    activity with natural timing and scroll patterns.
-
-    Attributes:
-        page: Playwright Page object (must be authenticated).
-        max_posts: Maximum number of posts to collect.
-        scroll_pause: Base pause between scroll actions (seconds).
-    """
 
     def __init__(
         self,
@@ -41,15 +20,6 @@ class FacebookScraper:
         scroll_pause_min: float = 2.0,
         scroll_pause_max: float = 5.0,
     ) -> None:
-        """
-        Initialize the Facebook scraper.
-
-        Args:
-            page: Authenticated Playwright Page object.
-            max_posts: Maximum posts to scrape before stopping.
-            scroll_pause_min: Minimum pause between scrolls (seconds).
-            scroll_pause_max: Maximum pause between scrolls (seconds).
-        """
         self.page = page
         self.max_posts = max_posts
         self.scroll_pause_min = scroll_pause_min
@@ -65,15 +35,6 @@ class FacebookScraper:
         )
 
     async def scrape_feed_posts(self) -> list[dict[str, Any]]:
-        """
-        Scrape posts from the authenticated user's Facebook news feed.
-
-        Scrolls through the feed, extracting post data until max_posts
-        is reached or no new posts are found after multiple scroll attempts.
-
-        Returns:
-            List of post dictionaries with extracted data.
-        """
         logger.info("Starting feed scrape — navigating to Facebook feed...")
 
         await self.page.goto(
@@ -85,41 +46,24 @@ class FacebookScraper:
         return await self._scroll_and_extract()
 
     async def scrape_page_posts(self, page_url: str) -> list[dict[str, Any]]:
-        """
-        Scrape posts from a specific Facebook page.
-
-        Args:
-            page_url: URL of the Facebook page to scrape.
-
-        Returns:
-            List of post dictionaries with extracted data.
-        """
         logger.info("Starting page scrape — navigating to %s", page_url)
 
         await self.page.goto(page_url, wait_until="domcontentloaded")
         await human_delay(3.0, 5.0)
 
-        # Dismiss any popups (login prompts, cookie banners)
         await self._dismiss_popups()
 
         return await self._scroll_and_extract()
 
     async def _scroll_and_extract(self) -> list[dict[str, Any]]:
-        """
-        Core scraping loop: scroll, extract posts, repeat.
-
-        Uses a stale-scroll counter to detect when no new content
-        is being loaded (end of feed or throttled).
-        """
         stale_scrolls = 0
-        max_stale_scrolls = 5  # Stop after 5 scrolls with no new posts
+        max_stale_scrolls = 5
         scroll_count = 0
 
         while len(self._scraped_posts) < self.max_posts:
             scroll_count += 1
             prev_count = len(self._scraped_posts)
 
-            # Extract posts currently visible on the page
             await self._extract_visible_posts()
 
             new_count = len(self._scraped_posts) - prev_count
@@ -142,16 +86,13 @@ class FacebookScraper:
             else:
                 stale_scrolls = 0
 
-            # Scroll down with human-like behavior
             scroll_px = random_scroll_amount()
             await self.page.mouse.wheel(0, scroll_px)
             await human_delay(self.scroll_pause_min, self.scroll_pause_max)
 
-            # Occasional mouse movement (humans don't just scroll)
             if scroll_count % 3 == 0:
                 await random_mouse_movement(self.page)
 
-            # Occasional longer pause (reading a post)
             if scroll_count % 5 == 0:
                 logger.debug("Taking a reading break...")
                 await human_delay(4.0, 8.0)
@@ -163,16 +104,7 @@ class FacebookScraper:
         return self._scraped_posts
 
     async def _extract_visible_posts(self) -> None:
-        """
-        Extract post data from all currently visible post elements.
-
-        Facebook renders posts as div[role="article"] elements.
-        Each post is identified by a data attribute or aria label
-        to prevent duplicate extraction.
-        """
         try:
-            # Facebook post containers — these selectors target the
-            # main post wrapper elements in the news feed
             post_elements = self.page.locator(
                 'div[role="article"][aria-posinset], '
                 'div[data-pagelet^="FeedUnit"], '
@@ -201,15 +133,6 @@ class FacebookScraper:
             logger.warning("Error during post extraction: %s", e)
 
     async def _extract_post_data(self, element) -> Optional[dict[str, Any]]:
-        """
-        Extract structured data from a single post element.
-
-        Args:
-            element: Playwright Locator for the post container.
-
-        Returns:
-            Dictionary with post data, or None if extraction fails.
-        """
         try:
             post = {
                 "id": "",
@@ -223,32 +146,26 @@ class FacebookScraper:
                 "scraped_at": datetime.now().isoformat(),
             }
 
-            # ------ Author Name ------
-            # The author is usually in an <a> tag with a specific structure
             author_el = element.locator(
                 'h2 a, h3 a, h4 a, '
                 'a[role="link"] strong, '
-                'span.x1lliihq a'  # Common class for author links
+                'span.x1lliihq a'
             )
             if await author_el.count() > 0:
                 post["author"] = (await author_el.first.inner_text()).strip()
 
-            # ------ Post Text ------
-            # Post content is in a div with specific data attributes
             text_el = element.locator(
                 'div[data-ad-preview="message"], '
                 'div[dir="auto"][style*="text-align"], '
-                'div.xdj266r, '  # Common content wrapper class
+                'div.xdj266r, '
                 'div[data-ad-comet-preview="message"]'
             )
             if await text_el.count() > 0:
                 post["text"] = (await text_el.first.inner_text()).strip()
 
-            # Fallback: get all visible text if specific selectors fail
             if not post["text"]:
                 try:
                     all_text = await element.inner_text()
-                    # Take first 500 chars as the post preview
                     lines = [
                         l.strip()
                         for l in all_text.split("\n")
@@ -258,7 +175,6 @@ class FacebookScraper:
                 except Exception:
                     pass
 
-            # ------ Timestamp ------
             time_el = element.locator(
                 'a[href*="/posts/"] span, '
                 'a[role="link"] span[id]'
@@ -266,7 +182,6 @@ class FacebookScraper:
             if await time_el.count() > 0:
                 post["timestamp"] = (await time_el.first.inner_text()).strip()
 
-            # ------ Post URL ------
             link_el = element.locator(
                 'a[href*="/posts/"], '
                 'a[href*="/permalink/"], '
@@ -281,8 +196,6 @@ class FacebookScraper:
                         else href
                     )
 
-            # ------ Engagement Metrics ------
-            # Likes/reactions count
             reactions_el = element.locator(
                 'span[aria-label*="reaction"], '
                 'span[aria-label*="like"], '
@@ -296,7 +209,6 @@ class FacebookScraper:
                 if numbers:
                     post["likes"] = int(numbers[0].replace(",", ""))
 
-            # Comments count
             comments_el = element.locator(
                 'span:has-text("comment"), '
                 'span:has-text("Comment")'
@@ -307,8 +219,6 @@ class FacebookScraper:
                 if numbers:
                     post["comments_count"] = int(numbers[0])
 
-            # ------ Generate unique ID ------
-            # Use URL if available, otherwise hash of author + text
             if post["url"]:
                 post["id"] = post["url"]
             elif post["author"] and post["text"]:
@@ -316,7 +226,6 @@ class FacebookScraper:
             else:
                 post["id"] = f"post_{hash(str(post))}"
 
-            # Only return posts that have meaningful content
             if post["text"] or post["author"]:
                 return post
             return None
@@ -326,7 +235,6 @@ class FacebookScraper:
             return None
 
     async def _dismiss_popups(self) -> None:
-        """Dismiss common Facebook popups and overlays."""
         popup_selectors = [
             'div[role="dialog"] button[aria-label="Close"]',
             'div[role="dialog"] div[aria-label="Close"]',
@@ -344,15 +252,6 @@ class FacebookScraper:
                 pass
 
     def export_json(self, output_path: str = "output/facebook_posts.json") -> str:
-        """
-        Export scraped posts to a JSON file.
-
-        Args:
-            output_path: Path for the output JSON file.
-
-        Returns:
-            Absolute path to the created file.
-        """
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -376,5 +275,4 @@ class FacebookScraper:
 
     @property
     def posts(self) -> list[dict[str, Any]]:
-        """Get the list of scraped posts."""
         return self._scraped_posts

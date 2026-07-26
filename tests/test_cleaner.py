@@ -1,6 +1,5 @@
 import pytest
 
-# Mock cleaner module to be implemented in the project
 class DataCleaner:
     @staticmethod
     def clean_price(price_str: str) -> int:
@@ -38,7 +37,6 @@ class DataCleaner:
                     pass
         return result
 
-
 def test_clean_price():
     cleaner = DataCleaner()
     assert cleaner.clean_price("$150,000") == 150000
@@ -47,13 +45,11 @@ def test_clean_price():
     assert cleaner.clean_price(" $1,234.56 ") == 1234
     assert cleaner.clean_price("Contact for price") == 0
 
-
 def test_clean_address():
     cleaner = DataCleaner()
     assert cleaner.clean_address(" 123 MAIN ST ") == "123 Main St"
     assert cleaner.clean_address("apt 4b, new york, ny") == "Apt 4B, New York, Ny"
     assert cleaner.clean_address("") == ""
-
 
 def test_extract_housing_info():
     cleaner = DataCleaner()
@@ -69,9 +65,7 @@ def test_extract_housing_info():
     assert info3["bedrooms"] is None
     assert info3["sqft"] == 1000
 
-
 def test_duplicate_detection():
-    # Simple mock for duplicate detection
     seen_ids = set()
     def is_duplicate(item_id):
         if item_id in seen_ids:
@@ -83,12 +77,10 @@ def test_duplicate_detection():
     assert is_duplicate("id_456") is False
     assert is_duplicate("id_123") is True
 
-
 def test_validation():
-    # Test reasonable ranges for a property
     def is_valid_property(price, sqft):
         return 100 <= price <= 100_000_000 and (sqft is None or 50 <= sqft <= 50_000)
         
     assert is_valid_property(150000, 1500) is True
-    assert is_valid_property(10, 1500) is False  # Price too low
-    assert is_valid_property(150000, 10) is False  # Sqft too low
+    assert is_valid_property(10, 1500) is False
+    assert is_valid_property(150000, 10) is False
