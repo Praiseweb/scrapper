@@ -11,6 +11,6 @@ class PropertyListing(BaseModel):
     url: str
     description: Optional[str] = None
     posted_date: Optional[str] = None
-    source: str = "craigslist"
+    source: str = "redfin"
     location: str
     property_type: Optional[str] = None

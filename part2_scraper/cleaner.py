@@ -110,6 +110,7 @@ def clean_all(raw_listings: List[Dict]) -> List[PropertyListing]:
                 "url": raw.get("url", ""),
                 "description": raw.get("description"),
                 "posted_date": raw.get("posted_date"),
+                "source": raw.get("source", "redfin"),
                 "location": raw.get("location", "unknown")
             }
             
